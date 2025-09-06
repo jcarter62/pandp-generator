@@ -5,3 +5,6 @@ jinja2
 pyodbc
 pandas
 openpyxl
+apscheduler
+requests
+python-multipart
