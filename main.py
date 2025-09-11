@@ -17,10 +17,12 @@ from typing import Optional
 import json
 import logging
 import ftplib
+from utils.middleware import ContextProcessorMiddleware
 
 load_dotenv()
 
 app = FastAPI()
+app.add_middleware(ContextProcessorMiddleware)
 templates = Jinja2Templates(directory="templates")
 scheduler = BackgroundScheduler()
 scheduler.start()
@@ -132,7 +134,8 @@ def scheduled_ftp_push():
 
 @app.get("/", response_class=HTMLResponse)
 def root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    context = request.state.context
+    return templates.TemplateResponse("index.html", {"request": request, **context})
 
 @app.get("/api/generate-data-and-save")
 async def api_generate_data():
@@ -162,7 +165,14 @@ def admin_dashboard(request: Request):
     settings = read_settings()
     export_time = settings.get("export_time", "")
     ftp_time = settings.get("ftp_time", "")
-    return templates.TemplateResponse("admin.html", {"request": request, "files": files, "export_time": export_time, "ftp_time": ftp_time})
+
+    context = request.state.context
+    context['files'] = files
+    context['export_time'] = export_time
+    context['ftp_time'] = ftp_time
+    return templates.TemplateResponse("admin.html", {"request": request, **context})
+
+
 
 @app.post("/generate-export")
 async def generate_export(request: Request):
