@@ -7,7 +7,6 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta
 import os
 import requests
-import paramiko
 import hashlib
 import secrets
 from data import Data
