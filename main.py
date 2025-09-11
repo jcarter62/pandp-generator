@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, status, Depends, HTTPException
+from fastapi import FastAPI, Request, status, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -7,17 +7,17 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta
 import os
 import requests
-import ftplib
+import paramiko
 import hashlib
 import secrets
 from data import Data
-from typing import List
 import time
 import hmac
 import base64
 from typing import Optional
 import json
 import logging
+import ftplib
 
 load_dotenv()
 
@@ -28,8 +28,6 @@ scheduler.start()
 
 # Session management
 SECRET_SESSION_KEY = os.getenv("SESSION_SECRET", secrets.token_hex(16))
-
-
 
 def create_session_token(username: str) -> str:
     """Return a signed session token for the given username."""
@@ -104,10 +102,18 @@ def push_file_to_ftp(filename):
     if not os.path.exists(fpath):
         return False, "File not found"
     try:
-        with ftplib.FTP(ftp_host) as ftp:
+        with ftplib.FTP_TLS(ftp_host) as ftp:
             ftp.login(ftp_user, ftp_pass)
-            with open(fpath, "rb") as f:
-                ftp.storbinary(f"STOR {filename}", f)
+            # ftp.prot_p()  # Secure data connection
+            ftp.set_pasv(True)
+            with open(fpath, "rb") as file:
+                ftp.storbinary(f"STOR {filename}", file)
+
+            # now load the directory, and make sure the file is there.
+            files = ftp.nlst()
+            if filename not in files:
+                return False, "File upload failed: file not found on server after upload"
+
         return True, "File pushed to FTP successfully"
     except Exception as e:
         return False, str(e)
@@ -161,8 +167,9 @@ def admin_dashboard(request: Request):
 
 @app.post("/generate-export")
 async def generate_export(request: Request):
-    await generate_data()
-    return RedirectResponse("/admin", status_code=status.HTTP_302_FOUND)
+    generate_data()
+    return admin_dashboard(request)
+#    return RedirectResponse("/admin", status_code=status.HTTP_302_FOUND)
 
 @app.get("/download/{filename}")
 def download_file(request: Request, filename: str):
@@ -187,7 +194,10 @@ async def schedule_export(request: Request):
     settings = read_settings()
     settings["export_time"] = export_time
     write_settings(settings)
-    scheduler.add_job(scheduled_export, CronTrigger(hour=int(export_time[:2]), minute=int(export_time[3:]), second=0), id="daily_export", replace_existing=True)
+    # remove existing job if any
+    if scheduler.get_job("daily_export"):
+        scheduler.remove_job("daily_export")
+    scheduler.add_job(generate_data , CronTrigger(hour=int(export_time[:2]), minute=int(export_time[3:]), second=0), id="daily_export", replace_existing=True)
     return RedirectResponse("/admin", status_code=status.HTTP_302_FOUND)
 
 @app.post("/schedule-ftp")
@@ -292,6 +302,9 @@ def write_settings(settings):
 settings = read_settings()
 if "export_time" in settings:
     et = settings["export_time"]
+
+    if scheduler.get_job("daily_export"):
+        scheduler.remove_job("daily_export")
     scheduler.add_job(
         generate_data,
         CronTrigger(hour=int(et[:2]), minute=int(et[3:]), second=0),
@@ -300,6 +313,8 @@ if "export_time" in settings:
     )
 if "ftp_time" in settings:
     ft = settings["ftp_time"]
+    if scheduler.get_job("daily_ftp"):
+        scheduler.remove_job("daily_ftp")
     scheduler.add_job(
         scheduled_ftp_push,
         CronTrigger(hour=int(ft[:2]), minute=int(ft[3:]), second=0),

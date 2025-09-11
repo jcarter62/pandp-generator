@@ -1,64 +1,103 @@
 {% extends 'base.html' %}
 {% block body %}
 <div class="row">
-  <div class="col-12 mb-4">
-    <h2>Exported Files (Last 30 Days)</h2>
-    <table class="table table-striped">
-      <thead>
-        <tr><th>Filename</th><th>Date</th><th>Actions</th></tr>
-      </thead>
-      <tbody>
-        {% for file in files %}
-        <tr>
-          <td>{{ file.name }}</td>
-          <td>{{ file.date }}</td>
-          <td>
-            <a href="/download/{{ file.name }}" class="btn btn-sm btn-outline-primary">Download</a>
-            <a href="/push-ftp/{{ file.name }}" class="btn btn-sm btn-outline-success">Push to FTP</a>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  <div class="col-12 mb-4">
-    <form method="post" action="/generate-export">
-      <button type="submit" class="btn btn-primary">Generate New Export</button>
-    </form>
-  </div>
-  <div class="col-12 mb-4">
-    <h3>Schedule Daily Export</h3>
+    <div class="col-12 mb-4">
+        <div class="row">
+            <div class="col-10 mb-4">
+                <h2>Exported Files (Last 30 Days)</h2>
+            </div>
+            <div class="col-2 mb-4">
+                <form method="post" action="/generate-export">
+                    <button
+                            id="generateExportBtn"
+                            type="submit"
+                            class="btn btn-primary">
+                        Generate New Export
+                    </button>
+                </form>
+            </div>
+
+        </div>
+        <table class="table table-striped">
+            <thead>
+            <tr>
+                <th>Filename</th>
+                <th>Date</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for file in files %}
+            <tr>
+                <td>{{ file.name }}</td>
+                <td>{{ file.date }}</td>
+                <td>
+                    <a href="/download/{{ file.name }}" class="btn btn-sm btn-outline-primary">Download</a>
+                    <a href="/push-ftp/{{ file.name }}" class="btn btn-sm btn-outline-success">Push to FTP</a>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <hr>
     <form method="post" action="/schedule-export">
-      <div class="mb-3">
-        <label for="export_time" class="form-label">Export Time (HH:MM, 24h)</label>
-        <input
-                type="time"
-                id="export_time"
-                name="export_time"
-                class="form-control"
-                value="{{ export_time if export_time else '' }}"
-                required
-        >
-      </div>
-      <button type="submit" class="btn btn-secondary">Schedule Export</button>
+        <div class="row">
+
+            <div class="col-4 mb-4">
+                <h3>Schedule Daily Export</h3>
+            </div>
+            <div class="col-6 mb-4">
+                <div class="mb-3">
+                    <label for="export_time" class="form-label">Export Time (HH:MM AM/PM)</label>
+                    <input
+                            type="time"
+                            id="export_time"
+                            name="export_time"
+                            class="form-control"
+                            value="{{ export_time if export_time else '' }}"
+                            required
+                    >
+                </div>
+            </div>
+            <div class="col-2 mb-4">
+                <button type="submit" class="btn btn-secondary">Save Export Time</button>
+            </div>
+        </div>
     </form>
-  </div>
-  <div class="col-12 mb-4">
-    <h3>Schedule Daily FTP Push</h3>
+    <hr>
     <form method="post" action="/schedule-ftp">
-      <div class="mb-3">
-        <label for="ftp_time" class="form-label">FTP Push Time (HH:MM, 24h)</label>
-        <input
-                type="time"
-                id="ftp_time"
-                name="ftp_time"
-                class="form-control"
-                value="{{ ftp_time if ftp_time else '' }}"
-                required
-        >
-      </div>
-      <button type="submit" class="btn btn-success">Schedule FTP Push</button>
+
+        <div class="row">
+            <div class="col-4 mb-4">
+                <h3>Schedule Daily FTP Push</h3>
+            </div>
+
+            <div class="col-6 mb-4">
+                <div class="mb-3">
+                    <label for="ftp_time" class="form-label">FTP Push Time (HH:MM, 24h)</label>
+                    <input
+                            type="time"
+                            id="ftp_time"
+                            name="ftp_time"
+                            class="form-control"
+                            value="{{ ftp_time if ftp_time else '' }}"
+                            required
+                    >
+                </div>
+            </div>
+            <div class="col-2 mb-4">
+                <button type="submit" class="btn btn-success">Save FTP Time</button>
+            </div>
+        </div>
     </form>
-  </div>
+
 </div>
+<script>
+    document.querySelector('form[action="/generate-export"]').addEventListener('submit', function (e) {
+        const btn = document.getElementById('generateExportBtn');
+        btn.disabled = true;
+        btn.textContent = 'Working ...';
+    });
+</script>
 {% endblock %}
