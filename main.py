@@ -24,7 +24,19 @@ load_dotenv()
 app = FastAPI()
 app.add_middleware(ContextProcessorMiddleware)
 templates = Jinja2Templates(directory="templates")
-scheduler = BackgroundScheduler()
+
+from zoneinfo import ZoneInfo
+
+TZ = ZoneInfo(os.getenv("TIMEZONE", "America/Los_Angeles"))  # default to PST/PDT
+
+scheduler = BackgroundScheduler(
+    job_defaults={
+        "coalesce": True,  # combine missed runs into one
+        "max_instances": 1,  # avoid overlapping jobs
+        "misfire_grace_time": 60  # allow 60 seconds grace for small delays
+    },
+    timezone=TZ
+)
 scheduler.start()
 
 # Session management
@@ -206,7 +218,11 @@ async def schedule_export(request: Request):
     # remove existing job if any
     if scheduler.get_job("daily_export"):
         scheduler.remove_job("daily_export")
-    scheduler.add_job(generate_data , CronTrigger(hour=int(export_time[:2]), minute=int(export_time[3:]), second=0), id="daily_export", replace_existing=True)
+    scheduler.add_job(
+        generate_data ,
+        CronTrigger(hour=int(export_time[:2]), minute=int(export_time[3:]), second=0),
+        id="daily_export",
+        replace_existing=True)
     return RedirectResponse("/admin", status_code=status.HTTP_302_FOUND)
 
 @app.post("/schedule-ftp")
@@ -217,7 +233,11 @@ async def schedule_ftp(request: Request):
     settings = read_settings()
     settings["ftp_time"] = ftp_time
     write_settings(settings)
-    scheduler.add_job(scheduled_ftp_push, CronTrigger(hour=int(ftp_time[:2]), minute=int(ftp_time[3:]), second=0), id="daily_ftp", replace_existing=True)
+    scheduler.add_job(
+        scheduled_ftp_push,
+        CronTrigger(hour=int(ftp_time[:2]), minute=int(ftp_time[3:]), second=0),
+        id="daily_ftp",
+        replace_existing=True)
     return RedirectResponse("/admin", status_code=status.HTTP_302_FOUND)
 
 @app.get("/login", response_class=HTMLResponse)
