@@ -35,6 +35,7 @@ class Data:
                         "invoice_text": row[7],
                         "invoice": row[8],
                         "charge_type": row[9],
+                        "apn": row[10],
                     }
                     self.unpaid.append(item)
             wmisdb = None
